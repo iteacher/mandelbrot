@@ -1,0 +1,28 @@
+{
+  "name": "particle_system",
+  "version": "1.0.0",
+  "description": "A particle system project using TypeScript and Webpack",
+  "main": "dist/bundle.js",
+  "scripts": {
+    "build": "webpack",
+    "watch": "webpack --watch",
+    "start": "webpack serve --open",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/three": "^0.170.0",
+    "css-loader": "^6.11.0",
+    "html-webpack-plugin": "^5.0.0",
+    "style-loader": "^3.3.4",
+    "ts-loader": "^9.5.1",
+    "typescript": "^4.9.5",
+    "webpack": "^5.96.1",
+    "webpack-cli": "^4.10.0",
+    "webpack-dev-server": "^4.15.2"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "three": "^0.170.0"
+  }
+}
