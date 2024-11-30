@@ -1,132 +1,107 @@
-// src/js/main.ts
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
+if (!ctx) {
+    throw new Error("Failed to get canvas context");
+}
+document.body.appendChild(canvas);
 
-import * as THREE from 'three';
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-// Scene Setup
-const scene = new THREE.Scene();
+let zoom = 1;
+let offsetX = -0.7436438870371587; // Interesting point in the Mandelbrot set
+let offsetY = 0.1318259043091893;  // Known for its deep zoom potential
+const zoomSpeed = 0.01; // Global zoom speed variable
+let zoomFactor = 1;
 
-// Camera Setup
-const camera = new THREE.PerspectiveCamera(
-  75, // Field of View
-  window.innerWidth / window.innerHeight, // Aspect Ratio
-  0.1, // Near Clipping Plane
-  1000 // Far Clipping Plane
-);
-camera.position.z = 200; // Move the camera closer to the particles
+function mandelbrot(x: number, y: number, maxIterations: number): number {
+    let real = x;
+    let imaginary = y;
+    let iterations = 0;
+    let zReal = 0;
+    let zImaginary = 0;
 
-// Renderer Setup
-const renderer = new THREE.WebGLRenderer({
-  antialias: true, // Smooth edges
-});
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+    while (iterations < maxIterations) {
+        const zRealSquared = zReal * zReal;
+        const zImaginarySquared = zImaginary * zImaginary;
 
-// Create particles
-const PARTICLE_COUNT = 10000; // Increased for denser smoke effect
-const geometry = new THREE.BufferGeometry();
-const positions = new Float32Array(PARTICLE_COUNT * 3); // x, y, z
-const sizes = new Float32Array(PARTICLE_COUNT); // size
-const opacities = new Float32Array(PARTICLE_COUNT); // opacity for smoke effect
-const velocities = new Float32Array(PARTICLE_COUNT * 3); // for movement
+        if (zRealSquared + zImaginarySquared > 4) {
+            break;
+        }
 
-// Populate buffer attributes with initial values
-for (let i = 0; i < PARTICLE_COUNT; i++) {
-  // Position: Random within a smaller cube for denser appearance
-  positions[i * 3] = (Math.random() - 0.5) * 300;
-  positions[i * 3 + 1] = (Math.random() - 0.5) * 300;
-  positions[i * 3 + 2] = (Math.random() - 0.5) * 300;
+        zImaginary = 2 * zReal * zImaginary + imaginary;
+        zReal = zRealSquared - zImaginarySquared + real;
+        iterations++;
+    }
 
-  // Size: Varied sizes for more natural look
-  sizes[i] = Math.random() * 4 + 2;
-
-  // Opacity: Random for smoke effect
-  opacities[i] = Math.random() * 0.5 + 0.1;
-
-  // Velocity: Slow upward drift
-  velocities[i * 3] = (Math.random() - 0.5) * 0.2;
-  velocities[i * 3 + 1] = Math.random() * 0.2; // Upward drift
-  velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.2;
+    return iterations;
 }
 
-// Log particle details for debugging
-console.log(`Total particles created: ${PARTICLE_COUNT}`);
-for (let i = 0; i < 3; i++) {
-  const randomIndex = Math.floor(Math.random() * PARTICLE_COUNT);
-  console.log(`Particle ${i + 1}: Position = (${positions[randomIndex * 3]}, ${positions[randomIndex * 3 + 1]}, ${positions[randomIndex * 3 + 2]}), Size = ${sizes[randomIndex]}`);
+function getColor(iterations: number, maxIterations: number): [number, number, number] {
+    if (iterations === maxIterations) return [0, 0, 0];
+
+    // Create a smooth color gradient
+    const hue = (iterations / maxIterations) * 360;
+    const saturation = 100;
+    const lightness = 50;
+
+    // Convert HSL to RGB
+    const c = (1 - Math.abs(2 * lightness / 100 - 1)) * saturation / 100;
+    const x = c * (1 - Math.abs((hue / 60) % 2 - 1));
+    const m = lightness / 100 - c / 2;
+
+    let r = 0, g = 0, b = 0;
+
+    if (hue < 60) { r = c; g = x; }
+    else if (hue < 120) { r = x; g = c; }
+    else if (hue < 180) { g = c; b = x; }
+    else if (hue < 240) { g = x; b = c; }
+    else if (hue < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+
+    return [
+        Math.floor((r + m) * 255),
+        Math.floor((g + m) * 255),
+        Math.floor((b + m) * 255)
+    ];
 }
 
-// Assign attributes to geometry
-geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-geometry.setAttribute('opacity', new THREE.BufferAttribute(opacities, 1));
+function drawMandelbrot() {
+    if (!ctx) return;
 
-// Create custom shader material for smoke effect
-const material = new THREE.ShaderMaterial({
-  transparent: true,
-  depthWrite: false,
-  uniforms: {
-    time: { value: 0 }
-  },
-  vertexShader: `
-    attribute float size;
-    attribute float opacity;
-    varying float vOpacity;
-    
-    void main() {
-      vOpacity = opacity;
-      vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-      gl_PointSize = size * (300.0 / -mvPosition.z);
-      gl_Position = projectionMatrix * mvPosition;
+    const maxIterations = Math.floor(Math.log2(zoomFactor) * 10) + 100; // Increase detail with zoom
+    const imageData = ctx.createImageData(canvas.width, canvas.height);
+
+    const aspectRatio = canvas.width / canvas.height;
+    const scale = 4 / Math.pow(2, zoomFactor);
+
+    for (let x = 0; x < canvas.width; x++) {
+        for (let y = 0; y < canvas.height; y++) {
+            const scaledX = (x / canvas.width - 0.5) * scale * aspectRatio + offsetX;
+            const scaledY = (y / canvas.height - 0.5) * scale + offsetY;
+
+            const iterations = mandelbrot(scaledX, scaledY, maxIterations);
+            const [r, g, b] = getColor(iterations, maxIterations);
+
+            const pixelIndex = (x + y * canvas.width) * 4;
+            imageData.data[pixelIndex] = r;
+            imageData.data[pixelIndex + 1] = g;
+            imageData.data[pixelIndex + 2] = b;
+            imageData.data[pixelIndex + 3] = 255;
+        }
     }
-  `,
-  fragmentShader: `
-    varying float vOpacity;
-    
-    void main() {
-      float r = length(gl_PointCoord - vec2(0.5));
-      if (r > 0.5) discard;
-      float alpha = smoothstep(0.5, 0.0, r);
-      gl_FragColor = vec4(1.0, 1.0, 1.0, alpha * vOpacity);
-    }
-  `
-});
 
-// Create Points and add to scene
-const particles = new THREE.Points(geometry, material);
-scene.add(particles);
-
-// Animation
-const clock = new THREE.Clock();
+    ctx.putImageData(imageData, 0, 0);
+}
 
 function animate() {
-  requestAnimationFrame(animate);
-
-  const delta = clock.getDelta();
-  material.uniforms.time.value += delta;
-
-  // Update particle positions
-  for (let i = 0; i < PARTICLE_COUNT; i++) {
-    positions[i * 3] += velocities[i * 3];
-    positions[i * 3 + 1] += velocities[i * 3 + 1];
-    positions[i * 3 + 2] += velocities[i * 3 + 2];
-
-    // Reset particles that move too far
-    if (positions[i * 3 + 1] > 150) {
-      positions[i * 3 + 1] = -150;
-      positions[i * 3] = (Math.random() - 0.5) * 300;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 300;
-    }
-  }
-
-  geometry.attributes.position.needsUpdate = true;
-  renderer.render(scene, camera);
+    drawMandelbrot();
+    
+    // Continuously increase zoom factor
+    zoomFactor += zoomSpeed;
+    
+    requestAnimationFrame(animate);
 }
 
+// Start animation
 animate();
-
-// Handle window resize
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});

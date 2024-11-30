@@ -13,7 +13,7 @@ module.exports = {
     rules: [
       {
         test: /\.png$/, // Add loader for PNG files
-        type: 'asset/resource',
+        type: 'asset/resource', // Ensure PNG files are handled correctly
       },
       {
         test: /\.css$/, // Add loader for CSS files
