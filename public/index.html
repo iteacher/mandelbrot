@@ -2,21 +2,16 @@
     Attribution: Julian Manders-Jones
     License: MIT
 -->
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mandelbrot Set Visualization</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: black; /* Set a dark background for better contrast */
-        }
-    </style>
+    <title>High-Performance Particle System</title>
+    <link rel="stylesheet" href="./styles/styles.css"> <!-- Ensure the stylesheet is linked -->
 </head>
 <body>
-    <script src="src/js/main.js"></script> <!-- Link to the compiled JavaScript file -->
+    <div id="container"></div>
+    <!-- Webpack will automatically inject the bundled script -->
+    <script src="bundle.js"></script> <!-- Ensure the script tag is correctly linked -->
 </body>
 </html>
