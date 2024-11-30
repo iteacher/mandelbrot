@@ -1,7 +1,7 @@
 {
-  "name": "particle_system",
+  "name": "mandelbrot",
   "version": "1.0.0",
-  "description": "A particle system project using TypeScript and Webpack",
+  "description": "A mandelbrot with infinite zoom",
   "main": "dist/bundle.js",
   "scripts": {
     "start:normal": "webpack serve --entry ./src/js/main.ts --open",
