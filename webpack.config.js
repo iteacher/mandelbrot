@@ -1,4 +1,5 @@
 // Author: Julian Manders-Jones
+// Description:  Mandelbrot infinite zoom
 // License: MIT
 
 const path = require('path');

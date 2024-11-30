@@ -4,7 +4,6 @@
   "description": "A particle system project using TypeScript and Webpack",
   "main": "dist/bundle.js",
   "scripts": {
-    "start:flaming": "webpack serve --entry ./src/js/main_flaming1.ts --open",
     "start:normal": "webpack serve --entry ./src/js/main.ts --open",
     "build": "webpack",
     "watch": "webpack --watch",
