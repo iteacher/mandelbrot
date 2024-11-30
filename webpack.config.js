@@ -1,3 +1,6 @@
+// Author: Julian Manders-Jones
+// License: MIT
+
 const path = require('path');
 
 module.exports = {

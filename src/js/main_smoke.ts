@@ -26,6 +26,9 @@ document.body.appendChild(renderer.domElement);
 
 // Create particles
 const PARTICLE_COUNT = 10000; // Increased for denser smoke effect
+// Author: Julian Manders-Jones
+// License: MIT
+
 const geometry = new THREE.BufferGeometry();
 const positions = new Float32Array(PARTICLE_COUNT * 3); // x, y, z
 const sizes = new Float32Array(PARTICLE_COUNT); // size

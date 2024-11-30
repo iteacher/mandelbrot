@@ -50,6 +50,9 @@ for (let i = 0; i < PARTICLE_COUNT; i++) {
 }
 
 // Assign attributes to geometry
+// Author: Julian Manders-Jones
+// License: MIT
+
 geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 geometry.setAttribute('opacity', new THREE.BufferAttribute(opacities, 1));

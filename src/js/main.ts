@@ -1,3 +1,6 @@
+// Author: Julian Manders-Jones
+// License: MIT
+
 const canvas = document.createElement('canvas');
 const ctx = canvas.getContext('2d');
 if (!ctx) {
