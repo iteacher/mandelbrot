@@ -17,6 +17,7 @@ displayCanvas.style.position = 'fixed';
 displayCanvas.style.top = '0';
 displayCanvas.style.left = '0';
 displayCanvas.style.display = 'block';
+displayCanvas.style.cursor = 'crosshair'; // Show crosshair cursor
 document.body.style.margin = '0';
 document.body.style.overflow = 'hidden';
 document.body.appendChild(displayCanvas);
@@ -32,9 +33,28 @@ let offsetX = -0.7; // Center point X
 let offsetY = 0.0; // Center point Y
 const maxIterationBase = 40; // Base value for max iterations
 
-// Zoom parameters
+// Zoom and movement parameters
 let zoomFactor = 0.1; // Current zoom level
-const zoomSpeed = 0.003; // Reduced speed for smoother zooming
+const zoomSpeed = 0.003; // Forward zoom speed
+const movementSpeed = 0.0004; // Increased for better response
+const deadZone = 30; // Reduced dead zone for better control
+const maxDeflection = 150; // Reduced for more precise control
+const smoothing = 0.2; // Increased for more responsive movement
+
+// Flight control state
+let isPaused = false;
+let currentVelocityX = 0;
+let currentVelocityY = 0;
+let targetVelocityX = 0;
+let targetVelocityY = 0;
+let mouseX = window.innerWidth / 2;
+let mouseY = window.innerHeight / 2;
+
+// Center point animation
+let targetOffsetX = offsetX;
+let targetOffsetY = offsetY;
+let isAnimatingCenter = false;
+const centerAnimationSpeed = 0.1; // Speed of center point animation
 
 // Function to update both canvases
 function updateCanvases() {
@@ -78,8 +98,76 @@ function screenToComplex(screenX: number, screenY: number): [number, number] {
     ];
 }
 
+function calculateMovementVector(mouseX: number, mouseY: number): [number, number] {
+    const centerX = displayCanvas.width / 2;
+    const centerY = displayCanvas.height / 2;
+    
+    // Calculate distance from center
+    const deltaX = mouseX - centerX;
+    const deltaY = mouseY - centerY;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    // If within dead zone, no movement
+    if (distance < deadZone) {
+        return [0, 0];
+    }
+    
+    // Calculate movement strength (0 to 1) with quadratic scaling for better control
+    const strength = Math.min(Math.pow((distance - deadZone) / (maxDeflection - deadZone), 2), 1);
+    
+    // Normalize the direction vector and apply strength
+    const normalizedX = (deltaX / distance) * strength;
+    const normalizedY = (deltaY / distance) * strength;
+    
+    return [normalizedX, normalizedY];
+}
+
+function updateMovement() {
+    if (isPaused) {
+        targetVelocityX = 0;
+        targetVelocityY = 0;
+    } else if (!isAnimatingCenter) { // Only update flight controls if not animating to new center
+        const [moveX, moveY] = calculateMovementVector(mouseX, mouseY);
+        targetVelocityX = moveX * movementSpeed;
+        targetVelocityY = moveY * movementSpeed;
+    }
+    
+    // Smooth movement
+    currentVelocityX += (targetVelocityX - currentVelocityX) * smoothing;
+    currentVelocityY += (targetVelocityY - currentVelocityY) * smoothing;
+    
+    // Apply movement to offset if not animating to new center
+    if (!isAnimatingCenter) {
+        offsetX += currentVelocityX;
+        offsetY += currentVelocityY;
+    }
+}
+
+function updateCenterAnimation() {
+    if (!isAnimatingCenter) return;
+
+    // Calculate distance to target
+    const dx = targetOffsetX - offsetX;
+    const dy = targetOffsetY - offsetY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // If we're close enough to target, stop animating
+    if (distance < 0.0001) {
+        isAnimatingCenter = false;
+        offsetX = targetOffsetX;
+        offsetY = targetOffsetY;
+        return;
+    }
+
+    // Smoothly move toward target
+    offsetX += dx * centerAnimationSpeed;
+    offsetY += dy * centerAnimationSpeed;
+}
+
 function updateZoom() {
-    // Use exponential zoom for consistent visual speed
+    if (isPaused) return;
+
+    // Constant forward zoom
     zoomFactor *= (1 + zoomSpeed);
     
     // Reset zoom if it gets too large to prevent precision issues
@@ -195,37 +283,93 @@ function drawMandelbrot() {
     displayCtx.drawImage(bufferCanvas, 0, 0);
 }
 
-// Add instruction text
-const instructionText = "Click anywhere to set zoom center";
-function drawInstructions() {
+// Draw UI elements
+function drawUI() {
     if (!displayCtx) return;
-    displayCtx.font = '24px Arial';
-    displayCtx.fillStyle = 'white';
-    displayCtx.textAlign = 'center';
-    displayCtx.fillText(instructionText, displayCanvas.width / 2, 40);
+    
+    const width = displayCanvas.width;
+    const height = displayCanvas.height;
+    
+    // Draw movement vector indicator
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const vectorScale = 50; // Scale factor for vector visualization
+    
+    displayCtx.beginPath();
+    displayCtx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    displayCtx.lineWidth = 2;
+    
+    // Draw vector line
+    displayCtx.moveTo(centerX, centerY);
+    displayCtx.lineTo(
+        centerX + currentVelocityX * vectorScale * 1000,
+        centerY + currentVelocityY * vectorScale * 1000
+    );
+    displayCtx.stroke();
+    
+    // Draw dead zone circle
+    displayCtx.beginPath();
+    displayCtx.arc(centerX, centerY, deadZone, 0, Math.PI * 2);
+    displayCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    displayCtx.stroke();
+    
+    // Draw instructions
+    displayCtx.font = '18px Arial';
+    displayCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    displayCtx.textAlign = 'left';
+    
+    const instructions = [
+        "Controls:",
+        "• Move mouse to steer",
+        "• Click to center on point",
+        "• Space or Right-click to pause",
+        isPaused ? "Status: PAUSED" : isAnimatingCenter ? "Status: CENTERING" : "Status: FLYING"
+    ];
+    
+    instructions.forEach((text, index) => {
+        displayCtx.fillText(text, 20, 30 + (index * 25));
+    });
 }
 
-// Flag to track if animation has started
-let animationStarted = false;
+// Track mouse movement
+displayCanvas.addEventListener('mousemove', (event) => {
+    const rect = displayCanvas.getBoundingClientRect();
+    mouseX = (event.clientX - rect.left) * (displayCanvas.width / rect.width);
+    mouseY = (event.clientY - rect.top) * (displayCanvas.height / rect.height);
+});
 
-// Handle mouse clicks to set zoom center
+// Handle clicks to set new center point
 displayCanvas.addEventListener('click', (event) => {
     const rect = displayCanvas.getBoundingClientRect();
+    const clickX = (event.clientX - rect.left) * (displayCanvas.width / rect.width);
+    const clickY = (event.clientY - rect.top) * (displayCanvas.height / rect.height);
     
-    // Get click position in canvas coordinates
-    const canvasX = (event.clientX - rect.left) * (displayCanvas.width / rect.width);
-    const canvasY = (event.clientY - rect.top) * (displayCanvas.height / rect.height);
+    // Convert click position to complex coordinates
+    const [newX, newY] = screenToComplex(clickX, clickY);
     
-    // Convert click coordinates to complex plane coordinates
-    const [newX, newY] = screenToComplex(canvasX, canvasY);
+    // Set new target center
+    targetOffsetX = newX;
+    targetOffsetY = newY;
+    isAnimatingCenter = true;
     
-    // Update the center point
-    offsetX = newX;
-    offsetY = newY;
-    
-    // Start animation if this is the first click
-    if (!animationStarted) {
-        animationStarted = true;
+    // Reset velocities
+    currentVelocityX = 0;
+    currentVelocityY = 0;
+    targetVelocityX = 0;
+    targetVelocityY = 0;
+});
+
+// Handle right click to pause/unpause
+displayCanvas.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+    isPaused = !isPaused;
+});
+
+// Handle spacebar to pause/unpause
+document.addEventListener('keydown', (event) => {
+    if (event.code === 'Space') {
+        event.preventDefault();
+        isPaused = !isPaused;
     }
 });
 
@@ -233,15 +377,11 @@ displayCanvas.addEventListener('click', (event) => {
 requestAnimationFrame(function render(currentTime: number) {
     if (!lastFrameTime) lastFrameTime = currentTime;
     
-    if (animationStarted) {
-        updateZoom();
-    }
-    
+    updateMovement();
+    updateCenterAnimation();
+    updateZoom();
     drawMandelbrot();
-    
-    if (!animationStarted) {
-        drawInstructions();
-    }
+    drawUI();
     
     lastFrameTime = currentTime;
     requestAnimationFrame(render);
