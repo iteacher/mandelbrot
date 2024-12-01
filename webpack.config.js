@@ -1,45 +1,39 @@
-// Author: Julian Manders-Jones
-// Description:  Mandelbrot infinite zoom
-// License: MIT
-
 const path = require('path');
 
 module.exports = {
-  mode: 'development', // Set mode to development
-  entry: './src/js/main.ts', // Set entry point to main.ts
-  output: {
-    filename: 'bundle.js',
-    path: path.resolve(__dirname, 'dist'),
-    publicPath: '/', // Important for dev server
-    clean: true, // Clean the output directory before emit
-  },
+  mode: 'development',
+  entry: './src/js/main.ts',
   module: {
     rules: [
       {
-        test: /\.png$/, // Add loader for PNG files
-        type: 'asset/resource', // Ensure PNG files are handled correctly
-      },
-      {
-        test: /\.css$/, // Add loader for CSS files
-        use: ['style-loader', 'css-loader'],
-      },
-      {
-        test: /\.ts$/, // Add loader for TypeScript files
+        test: /\.tsx?$/,
         use: 'ts-loader',
         exclude: /node_modules/,
+      },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader', 'postcss-loader'],
       },
     ],
   },
   resolve: {
-    extensions: ['.ts', '.js'], // Resolve TypeScript and JavaScript files
+    extensions: ['.tsx', '.ts', '.js'],
+  },
+  output: {
+    filename: 'bundle.js',
+    path: path.resolve(__dirname, 'public'),
+    publicPath: '/',
   },
   devServer: {
     static: {
-      directory: path.join(__dirname, 'public'), // Serve static files from the public directory
+      directory: path.join(__dirname, 'public'),
     },
-    historyApiFallback: true, // Enable fallback for single-page applications
-    port: 8081, // Ensure this matches your running port
-    open: true, // Automatically open the browser
+    hot: true,
+    compress: true,
+    port: 3000,
+    open: true,
+    devMiddleware: {
+      writeToDisk: true
+    }
   },
-  // Other configurations...
 };
